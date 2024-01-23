@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Serverless Application for Point System
+
+Globals:
+  Function:
+    Timeout: 30
+
+Resources:
+  PointsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: points
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  PointUpdateQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: pointUpdateQueue.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: true
+
+  AddPointsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: handler/
+      Handler: app.addPoints
+      Runtime: python3.9
+      Events:
+        AddPointsApi:
+          Type: Api
+          Properties:
+            Path: /addPoints
+            Method: POST
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::GetAtt:
+                - PointUpdateQueue
+                - QueueName
+
+  ProcessPointsUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: handler/
+      Handler: app.processPointsUpdate
+      Runtime: python3.9
+      Events:
+        ProcessPointsUpdateEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+                - PointUpdateQueue
+                - Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: points
