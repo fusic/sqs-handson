@@ -3,7 +3,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 dynamoDB = boto3.resource('dynamodb').Table('points')
-sqs = boto3.resource('sqs').Queue('https://sqs.ap-northeast-1.amazonaws.com/048664854097/pointUpdateQueue.fifo')
+sqs = boto3.resource('sqs').Queue('SQSのURL')
 
 def addPoints(event, context):
     body = json.loads(event['body'])
